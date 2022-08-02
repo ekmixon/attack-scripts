@@ -15,7 +15,8 @@ def build_taxii_source(collection_name):
         "enterprise_attack": "95ecc380-afe9-11e4-9b6c-751b66dd541e",
         "mobile_attack": "2f669986-b40b-4423-b720-4396ca6a462b"
     }
-    collection_url = "https://cti-taxii.mitre.org/stix/collections/" + collection_map[collection_name] + "/"
+    collection_url = f"https://cti-taxii.mitre.org/stix/collections/{collection_map[collection_name]}/"
+
     collection = Collection(collection_url)
     taxii_ds = TAXIICollectionSource(collection)
 
@@ -108,12 +109,9 @@ def do_mapping(ds, fieldnames, relationship_type, type_filter, source_name, sort
         relationships = filter_for_term_relationships(ds, relationship_type, attack_pattern.id)
 
         for relationship in relationships:
-            # Groups are defined in STIX as intrusion-set objects
-            # Mitigations are defined in STIX as course-of-action objects
-            # Software are defined in STIX as malware objects
-            stix_results = filter_by_type_and_id(ds, type_filter, relationship.source_ref, source_name)
-
-            if stix_results:
+            if stix_results := filter_by_type_and_id(
+                ds, type_filter, relationship.source_ref, source_name
+            ):
                 row_data = (
                     grab_external_id(attack_pattern, source_name),
                     attack_pattern.name,
@@ -160,7 +158,7 @@ def main(args):
         sorting_keys = ("TID", "SID")
         rowdicts = do_mapping(data_source, fieldnames, relationship_type, type_filter, source_name, sorting_keys, tactic)
     else:
-        raise RuntimeError("Unknown option: %s" % op)
+        raise RuntimeError(f"Unknown option: {op}")
 
     with io.open(filename, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

@@ -12,7 +12,7 @@ def generate(show_nodetect=False):
     ms = MemoryStore(stix_data=stix["objects"])
     apt3 = ms.get("intrusion-set--0bbdf25b-30ff-4894-a1cd-49260d0dd2d9")
     apt29 = ms.get("intrusion-set--899ce53f-13a0-479b-a0e4-67d46e241542")
-    
+
     techniques_used = {} # attackID => {apt3: boolean, apt29: boolean, software: Set, detection: boolean}
 
     for apt in [apt3, apt29]:
@@ -21,7 +21,7 @@ def generate(show_nodetect=False):
             """helper function to record a technique as used"""
             techniqueID = technique["external_references"][0]["external_id"]
             # init struct if the technique has not been seen before
-            if not techniqueID in techniques_used:
+            if techniqueID not in techniques_used:
                 techniques_used[techniqueID] = {
                     "APT3": False,
                     "APT29": False,
@@ -34,7 +34,7 @@ def generate(show_nodetect=False):
                 techniques_used[techniqueID]["datasources"] = technique["x_mitre_data_sources"]
             if software:
                 techniques_used[techniqueID]["software"].add(software["name"])
-        
+
         # traverse relationships
         for relationship in ms.relationships(apt["id"]):
             target_obj = ms.get(relationship["target_ref"])
@@ -45,7 +45,7 @@ def generate(show_nodetect=False):
                 # record technique usage
                 use_technique(target_obj)
             # software type relationship, traverse to find software-used techniques
-            if target_obj["type"] == "malware" or target_obj["type"] == "tool":
+            if target_obj["type"] in ["malware", "tool"]:
                 software = target_obj
                 for software_relationship in ms.relationships(software["id"]):
                     software_target_obj = ms.get(software_relationship["target_ref"])
@@ -59,7 +59,7 @@ def generate(show_nodetect=False):
     techniques_list = []
 
     def color_lookup(usage): 
-        if show_nodetect and not len(usage["datasources"]) > 0:
+        if show_nodetect and len(usage["datasources"]) <= 0:
             return "#fc3b3b"
         if usage["APT3"] and usage["APT29"]: 
             return "#74c476"
@@ -113,7 +113,7 @@ def generate(show_nodetect=False):
             "label": "Used by either APT3 or APT29 but considered undetectable by a notional organization because it has no data-sources",
             "color": color_lookup({"APT3": True, "APT29": True, "datasources": []})
         })
-        
+
     # layer struct
     return {
         "name": name,

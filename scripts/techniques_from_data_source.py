@@ -22,18 +22,18 @@ def data_sources():
                 data_src for data_src in tech.x_mitre_data_sources
                 if data_src not in all_data_srcs
             ]
-    
+
     return all_data_srcs
 
 def techniques(data_source):
     """returns all techniques which contain the given data source."""
-    
-    techs_with_data_src = tc_src.query([
-        Filter("type", "=", "attack-pattern"),
-        Filter("x_mitre_data_sources", "in", data_source)
-    ])
 
-    return techs_with_data_src
+    return tc_src.query(
+        [
+            Filter("type", "=", "attack-pattern"),
+            Filter("x_mitre_data_sources", "in", data_source),
+        ]
+    )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

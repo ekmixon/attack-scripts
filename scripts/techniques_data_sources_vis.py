@@ -94,12 +94,10 @@ def establish_connection(collection: str):
         connection to the taxii collection
     """
 
-    
+
     # Establish TAXII2 Collection instance for Enterprise ATT&CK collection
     collection = Collection(collection)
-    # Supply the collection to TAXIICollection
-    tc_src = TAXIICollectionSource(collection)
-    return tc_src
+    return TAXIICollectionSource(collection)
 
 
 def parse_tactics():
@@ -264,7 +262,7 @@ def write_DPT(output_directory):
         for tech in tech_to_def:
             for defn in tech_to_def[tech]:
                 for perm in tech_to_perm[tech]:
-                    output_file.write(tech.lower() + "," + defn.lower() + "," + perm.lower() + "\n")
+                    output_file.write(f"{tech.lower()},{defn.lower()},{perm.lower()}" + "\n")
 
 
 def write_tacticsToTechniques(output_directory="generated_content"):
@@ -282,7 +280,7 @@ def write_tacticsToTechniques(output_directory="generated_content"):
         output_file.write("technique,tactic\n")
         for tech in tech_to_tac:
             for tac in tech_to_tac[tech]:
-                output_file.write(tech.lower() + "," + tac.lower() + "\n")
+                output_file.write(f"{tech.lower()},{tac.lower()}" + "\n")
 
 
 def write_TSG(specified_techniques=None, output_directory="generated_content"):
@@ -316,7 +314,7 @@ def write_TSG(specified_techniques=None, output_directory="generated_content"):
                 if software not in software_to_group:
                     continue
                 for group in software_to_group[software]:
-                    output_file.write(tech.lower() + "," + software.lower() + "," + group.lower() + "\n")
+                    output_file.write(f"{tech.lower()},{software.lower()},{group.lower()}" + "\n")
 
 
 def write_tacticPermissions(output_directory="generated_content"):
@@ -335,7 +333,10 @@ def write_tacticPermissions(output_directory="generated_content"):
         output_file.write("tactic,permission,technique count\n")
         for tac in tactics_to_permission:
             for perm in tactics_to_permission[tac]:
-                output_file.write(tac.lower() + "," + perm.lower() + "," + str(tactics_to_permission[tac][perm]) + "\n")
+                output_file.write(
+                    f"{tac.lower()},{perm.lower()},{str(tactics_to_permission[tac][perm])}"
+                    + "\n"
+                )
 
 
 def write_techniquesToDatasources(data_sources, output_directory="generated_content"):
@@ -356,7 +357,7 @@ def write_techniquesToDatasources(data_sources, output_directory="generated_cont
         for tech in tech_to_data:
             for data in tech_to_data[tech]:
                 if data.lower() in data_sources:
-                    output_file.write(tech.lower() + "," + data.lower() + "\n")
+                    output_file.write(f"{tech.lower()},{data.lower()}" + "\n")
 
 
 def generate_content(data_sources_list, tactics_to_visualize, output_directory="generated_content"):
@@ -402,7 +403,12 @@ def generate_content(data_sources_list, tactics_to_visualize, output_directory="
 
     if verbose: 
         print("done!")
-        print("writing output to directory " + output_directory + "... ", end="", flush=True)
+        print(
+            f"writing output to directory {output_directory}... ",
+            end="",
+            flush=True,
+        )
+
 
     # write output files
     write_DPT(output_directory)

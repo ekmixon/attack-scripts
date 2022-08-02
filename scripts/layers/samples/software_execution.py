@@ -13,11 +13,11 @@ def generate(softwaretype="software"):
     ms = MemoryStore(stix_data=stix["objects"])
     # software includes malware and tool types so perform two queries and merge the results
     software_filters = []
-    if softwaretype == "malware" or softwaretype == "software":
+    if softwaretype in ["malware", "software"]:
         software_filters.append( [ Filter('type', '=', 'malware') ] )
-    if softwaretype == "tool" or softwaretype == "software":
+    if softwaretype in ["tool", "software"]:
         software_filters.append( [ Filter('type', '=', 'tool') ] )
-        
+
     software = list(chain.from_iterable(
         ms.query(f) for f in software_filters
     ))
@@ -44,17 +44,20 @@ def generate(softwaretype="software"):
     techniques_list = []
     highest_usage = 0
     lowest_usage = 1
-    for techniqueID in techniques_used:
+    for techniqueID, value in techniques_used.items():
         # determine the number of used techniques for the score
         count = len(techniques_used[techniqueID])
         highest_usage = max(highest_usage, count)
         lowest_usage = min(lowest_usage, count)
         # append technique struct to list of layer-formatted techniques
-        techniques_list.append({
-            "techniqueID": techniqueID,
-            "comment": "executed by " + ", ".join(techniques_used[techniqueID]),
-            "score": count,
-        })
+        techniques_list.append(
+            {
+                "techniqueID": techniqueID,
+                "comment": "executed by " + ", ".join(value),
+                "score": count,
+            }
+        )
+
     # set up layer name and desc according to softwaretype
     if softwaretype != "software": 
         plural = "tools" if softwaretype == "tool" else "malware"
@@ -62,7 +65,8 @@ def generate(softwaretype="software"):
         layerdescription = f"All techniques that can be executed by software of subtype {softwaretype}, where the score is the count of {plural} using the technique"
     else: 
         layername = "Software Execution"
-        layerdescription = f"All techniques that can be executed by software, where the score is the count of software using the technique"
+        layerdescription = "All techniques that can be executed by software, where the score is the count of software using the technique"
+
 
     # construct and return the layer as a dict
     return {

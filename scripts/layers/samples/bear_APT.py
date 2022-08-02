@@ -28,10 +28,12 @@ def generate():
     for bear in bear_groups:
         # construct the "bear" name for the comment
         # if bear occurs in multiple aliases, list them all
-        bearnames = []
-        for alias in bear["aliases"]:
-            if re.match(".*bear.*", alias, re.IGNORECASE) is not None:
-                bearnames.append(alias)
+        bearnames = [
+            alias
+            for alias in bear["aliases"]
+            if re.match(".*bear.*", alias, re.IGNORECASE) is not None
+        ]
+
         bearname = bearnames[0]
         if len(bearnames) > 1: 
             bearname += " (AKA " + ",".join(bearnames[1:]) + ")"
@@ -52,13 +54,15 @@ def generate():
                 techniques_used[techniqueID] = [bearname]
 
     # format the techniques for the output layer
-    techniques_list = []
-    for techniqueID in techniques_used:
-        techniques_list.append({
+    techniques_list = [
+        {
             "techniqueID": techniqueID,
-            "comment": "used by " + ", ".join(techniques_used[techniqueID]),
-            "color": "#ff6666"
-        })
+            "comment": "used by " + ", ".join(value),
+            "color": "#ff6666",
+        }
+        for techniqueID, value in techniques_used.items()
+    ]
+
     # construct and return the layer as a dict
     return {
         "name": "*Bear APTs",

@@ -145,8 +145,7 @@ class DiffStix(object):
         url = datum['external_references'][0]['url']
         split_url = url.split('/')
         splitfrom = -3 if is_subtechnique else -2
-        link = '/'.join(split_url[splitfrom:])
-        return link
+        return '/'.join(split_url[splitfrom:])
 
 
     def deep_copy_stix(self, objects):
@@ -215,22 +214,22 @@ class DiffStix(object):
                 # load data from directory according to domain
                 def load_dir(dir, new=False):
                     data_store = MemoryStore()
-                    datafile = os.path.join(dir, domain + ".json")
+                    datafile = os.path.join(dir, f"{domain}.json")
                     data_store.load_from_file(datafile)
                     parse_subtechniques(data_store, new)
                     return load_datastore(data_store)
 
                 # load data from TAXII server according to domain
                 def load_taxii(new=False):
-                    collection = Collection("https://cti-taxii.mitre.org/stix/collections/" + domainToTaxiiCollectionId[domain])
+                    collection = Collection(
+                        f"https://cti-taxii.mitre.org/stix/collections/{domainToTaxiiCollectionId[domain]}"
+                    )
+
                     data_store = TAXIICollectionSource(collection)
                     parse_subtechniques(data_store, new)
                     return load_datastore(data_store)
 
-                if self.use_taxii:
-                    old = load_taxii(False)
-                else:
-                    old = load_dir(self.old, False)
+                old = load_taxii(False) if self.use_taxii else load_dir(self.old, False)
                 new = load_dir(self.new, True)
 
                 intersection = old["keys"] & new["keys"]
@@ -247,7 +246,10 @@ class DiffStix(object):
                 # find changes, revocations and deprecations
                 for key in intersection:
                     if "revoked" in new["id_to_obj"][key] and new["id_to_obj"][key]["revoked"]:
-                        if not "revoked" in old["id_to_obj"][key] or not old["id_to_obj"][key]["revoked"]: # if it was previously revoked, it's not a change
+                        if (
+                            "revoked" not in old["id_to_obj"][key]
+                            or not old["id_to_obj"][key]["revoked"]
+                        ): # if it was previously revoked, it's not a change
                             # store the revoking object
                             revoked_by_key = new["data_store"].query([
                                 Filter('type', '=', 'relationship'),
@@ -262,9 +264,9 @@ class DiffStix(object):
                             new["id_to_obj"][key]["revoked_by"] = new["id_to_obj"][revoked_by_key]
 
                             revocations.add(key)
-                        # else it was already revoked, and not a change; do nothing with it
+                                        # else it was already revoked, and not a change; do nothing with it
                     elif "x_mitre_deprecated" in new["id_to_obj"][key] and new["id_to_obj"][key]["x_mitre_deprecated"]:
-                        if not "x_mitre_deprecated" in old["id_to_obj"][key]:   # if previously deprecated, not a change
+                        if "x_mitre_deprecated" not in old["id_to_obj"][key]:   # if previously deprecated, not a change
                             deprecations.add(key)
                     else: # not revoked or deprecated
                         # try getting version numbers; should only lack version numbers if something has gone
@@ -272,11 +274,11 @@ class DiffStix(object):
                         try:
                             old_version = float(old["id_to_obj"][key]["x_mitre_version"])
                         except: 
-                            print("ERROR: cannot get old version for object: " + key)
+                            print(f"ERROR: cannot get old version for object: {key}")
                         try:
                             new_version = float(new["id_to_obj"][key]["x_mitre_version"])
                         except: 
-                            print("ERROR: cannot get new version for object: " + key)
+                            print(f"ERROR: cannot get new version for object: {key}")
 
                         # check for changes
                         if new_version > old_version:
@@ -290,7 +292,7 @@ class DiffStix(object):
                                 minor_changes.add(key)
                             else :
                                 unchanged.add(key)
-                
+
                 # set data
                 if obj_type not in self.data: self.data[obj_type] = {}
                 self.data[obj_type][domain] = {
@@ -300,7 +302,7 @@ class DiffStix(object):
                 # only create minor_changes data if we want to display it later
                 if self.minor_changes:
                     self.data[obj_type][domain]["minor_changes"] = [new["id_to_obj"][key] for key in minor_changes]
-                
+
                 # ditto for unchanged
                 if self.unchanged:
                     self.data[obj_type][domain]["unchanged"] = [new["id_to_obj"][key] for key in unchanged]
@@ -357,15 +359,35 @@ class DiffStix(object):
         """
         Return a markdown string summarizing detected differences.
         """
-        
+
         def getSectionList(items, obj_type, section):
             """
             parse a list of items in a section and return a string for the items
             """
-            
+
             # get parents which have children
-            childless = list(filter(lambda item: not self.has_subtechniques(item, True) and not ("x_mitre_is_subtechnique" in item and item["x_mitre_is_subtechnique"]), items))
-            parents = list(filter(lambda item: self.has_subtechniques(item, True) and not ("x_mitre_is_subtechnique" in item and item["x_mitre_is_subtechnique"]), items))
+            childless = list(
+                filter(
+                    lambda item: not self.has_subtechniques(item, True)
+                    and (
+                        "x_mitre_is_subtechnique" not in item
+                        or not item["x_mitre_is_subtechnique"]
+                    ),
+                    items,
+                )
+            )
+
+            parents = list(
+                filter(
+                    lambda item: self.has_subtechniques(item, True)
+                    and (
+                        "x_mitre_is_subtechnique" not in item
+                        or not item["x_mitre_is_subtechnique"]
+                    ),
+                    items,
+                )
+            )
+
             children = { item["id"]: item for item in filter(lambda item: "x_mitre_is_subtechnique" in item and item["x_mitre_is_subtechnique"], items) }
 
             subtechnique_of_rels = self.new_subtechnique_of_rels if section != "deletions" else self.old_subtechnique_of_rels
@@ -399,9 +421,9 @@ class DiffStix(object):
                     "parentInSection": False,
                     "children": parentToChildren[parentID]
                 })
-            
+
             groupings = sorted(groupings, key=lambda grouping: grouping["parent"]["name"])
-            
+
             def placard(item):
                 """get a section list item for the given SDO according to section type"""
                 if section == "revocations":
@@ -415,9 +437,9 @@ class DiffStix(object):
                         return f"{item['name']} (revoked by [{revoker['name']}]({self.site_prefix}/{self.getUrlFromStix(revoker)}))"
                 if section == "deletions":
                     return f"{item['name']}"
-                else:
-                    is_subtechnique = item["type"] == "attack-pattern" and "x_mitre_is_subtechnique" in item and item["x_mitre_is_subtechnique"]
-                    return f"[{item['name']}]({self.site_prefix}/{self.getUrlFromStix(item, is_subtechnique)})"
+                is_subtechnique = item["type"] == "attack-pattern" and "x_mitre_is_subtechnique" in item and item["x_mitre_is_subtechnique"]
+                return f"[{item['name']}]({self.site_prefix}/{self.getUrlFromStix(item, is_subtechnique)})"
+
 
 
             # build sectionList string
@@ -447,7 +469,7 @@ class DiffStix(object):
                         section_items = getSectionList(self.data[obj_type][domain][section], obj_type, section)
                     else: # no items in section
                         section_items = "No changes"
-                    header = sectionNameToSectionHeaders[section] + ":"
+                    header = f"{sectionNameToSectionHeaders[section]}:"
                     if "{obj_type}" in header:
                         if section == "additions":
                             header = header.replace("{obj_type}", attackTypeToPlural[obj_type].capitalize())
@@ -475,14 +497,14 @@ class DiffStix(object):
         self.verboseprint("generating layers dict... ", end="", flush="true")
 
         layers = {}
-        thedate = datetime.datetime.today().strftime('%B %Y')
+        thedate = datetime.datetime.now().strftime('%B %Y')
         # for each layer file in the domains mapping
         for domain in self.domains:
             # build techniques list
             techniques = []
             used_statuses = set()
             for status in self.data["technique"][domain]:
-                if status == "revocations" or status == "deprecations": continue
+                if status in ["revocations", "deprecations"]: continue
                 for technique in self.data["technique"][domain][status]:
                     for phase in technique['kill_chain_phases']:
                         techniques.append({
@@ -495,7 +517,16 @@ class DiffStix(object):
                         used_statuses.add(status)
 
             # build legend based off used_statuses
-            legendItems = list(map(lambda status: {"color": statusToColor[status], "label": status + ": " + statusDescriptions[status]}, used_statuses))
+            legendItems = list(
+                map(
+                    lambda status: {
+                        "color": statusToColor[status],
+                        "label": f"{status}: {statusDescriptions[status]}",
+                    },
+                    used_statuses,
+                )
+            )
+
 
             # build layer structure
             layer_json = {
@@ -529,10 +560,8 @@ def markdown_string_to_file(outfile, content):
 
     verboseprint("writing markdown string to file... ", end="", flush="true")
 
-    outfile = open(outfile, "w")
-    outfile.write(content)
-    outfile.close()
-
+    with open(outfile, "w") as outfile:
+        outfile.write(content)
     verboseprint("done")
 
 
